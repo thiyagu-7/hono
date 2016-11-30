@@ -97,6 +97,10 @@
             <address>event.DEFAULT_TENANT</address>
             <durable>true</durable>
           </queue>
+         <queue name="command.DEFAULT_TENANT">
+            <address>command.DEFAULT_TENANT</address>
+            <durable>true</durable>
+          </queue>
       </queues>
    </core>
 </configuration>

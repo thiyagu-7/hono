@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.apache.qpid.proton.message.Message;
+import org.eclipse.hono.client.impl.CommandConsumerImpl;
+import org.eclipse.hono.client.impl.CommandSenderImpl;
 import org.eclipse.hono.client.impl.EventConsumerImpl;
 import org.eclipse.hono.client.impl.EventSenderImpl;
 import org.eclipse.hono.client.impl.RegistrationClientImpl;
@@ -189,6 +191,12 @@ public class HonoClient {
         return this;
     }
 
+    public HonoClient getOrCreateCommandSender( final String tenantId, final Handler<AsyncResult<MessageSender>> resultHandler) {
+        Objects.requireNonNull(tenantId);
+        getOrCreateSender("command/" + tenantId, (creationResult) -> createCommandSender(tenantId, creationResult), resultHandler);
+        return this;
+    }
+
     private void getOrCreateSender(final String key, final Consumer<Handler> newSenderSupplier,
             final Handler<AsyncResult<MessageSender>> resultHandler) {
 
@@ -239,12 +247,33 @@ public class HonoClient {
         return this;
     }
 
+    public HonoClient createCommandConsumer(
+            final String tenantId,
+            final Consumer<Message> commandConsumer,
+            final Handler<AsyncResult<MessageConsumer>> creationHandler) {
+
+        checkConnection().compose(
+                connected -> CommandConsumerImpl.create(context, connection, tenantId, pathSeparator, commandConsumer, creationHandler),
+                Future.<MessageConsumer> future().setHandler(creationHandler));
+        return this;
+    }
+
     private HonoClient createEventSender(
             final String tenantId,
             final Handler<AsyncResult<MessageSender>> creationHandler) {
 
         checkConnection().compose(
                 connected -> EventSenderImpl.create(context, connection, tenantId, creationHandler),
+                Future.<MessageSender> future().setHandler(creationHandler));
+        return this;
+    }
+
+    private HonoClient createCommandSender(
+            final String tenantId,
+            final Handler<AsyncResult<MessageSender>> creationHandler) {
+
+        checkConnection().compose(
+                connected -> CommandSenderImpl.create(context, connection, tenantId, pathSeparator, creationHandler),
                 Future.<MessageSender> future().setHandler(creationHandler));
         return this;
     }

@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
 import io.vertx.proton.ProtonDelivery;
 import io.vertx.proton.ProtonHelper;
 import io.vertx.proton.ProtonSender;
@@ -51,6 +52,7 @@ public class ForwardingEventDownstreamAdapterTest {
     public void testProcessMessageForwardsEventMessageToDownstreamSender() throws InterruptedException {
 
         final Vertx vertx = mock(Vertx.class);
+        when(vertx.eventBus()).thenReturn(mock(EventBus.class));
         final UpstreamReceiver client = newClient();
         final ProtonDelivery delivery = mock(ProtonDelivery.class);
         final ProtonDelivery downstreamDelivery = mock(ProtonDelivery.class);
@@ -66,7 +68,7 @@ public class ForwardingEventDownstreamAdapterTest {
             return null;
         });
         ForwardingEventDownstreamAdapter adapter = new ForwardingEventDownstreamAdapter(vertx, newMockSenderFactory(sender));
-        adapter.addSender("CON_ID", CLIENT_ID, sender);
+        adapter.addLink("CON_ID", CLIENT_ID, sender);
 
         // WHEN processing a telemetry message
         Message msg = ProtonHelper.message(EVENT_MSG_CONTENT);

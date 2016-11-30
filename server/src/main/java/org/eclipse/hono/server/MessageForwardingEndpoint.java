@@ -23,11 +23,13 @@ import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.ResourceIdentifier;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.proton.ProtonDelivery;
 import io.vertx.proton.ProtonQoS;
 import io.vertx.proton.ProtonReceiver;
+import io.vertx.proton.ProtonSender;
 
 /**
  * A base class for implementing Hono {@code Endpoint}s that forward messages
@@ -36,30 +38,52 @@ import io.vertx.proton.ProtonReceiver;
  */
 public abstract class MessageForwardingEndpoint extends BaseEndpoint {
 
-    private DownstreamAdapter             downstreamAdapter;
+    private DownstreamAdapter downstreamAdapter;
+    private UpstreamAdapter upstreamAdapter;
 
     protected MessageForwardingEndpoint(final Vertx vertx) {
         super(Objects.requireNonNull(vertx));
     }
 
     @Override
-    protected final void doStart(Future<Void> startFuture) {
+    protected final void doStart(final Future<Void> startFuture) {
+        final Future<Void> startDownstream = Future.future();
+        final Future<Void> startUpstream = Future.future();
+
         if (downstreamAdapter == null) {
-            startFuture.fail("no downstream adapter configured on Telemetry endpoint");
+            startDownstream.complete();
         } else {
-            downstreamAdapter.start(startFuture);
+            downstreamAdapter.start(startDownstream);
         }
+
+        if (upstreamAdapter == null) {
+            startUpstream.complete();
+        } else {
+            upstreamAdapter.start(startUpstream);
+        }
+
+        CompositeFuture.all(startDownstream, startUpstream).compose(cf -> startFuture.complete(), startFuture);
     }
 
     @Override
-    protected final void doStop(Future<Void> stopFuture) {
-        if (downstreamAdapter == null) {
-            stopFuture.complete();
-        } else {
-            downstreamAdapter.stop(stopFuture);
-        }
-    }
+    protected final void doStop(final Future<Void> stopFuture) {
+        final Future<Void> stopDownstream = Future.future();
+        final Future<Void> stopUpstream = Future.future();
 
+        if (downstreamAdapter == null) {
+            stopDownstream.complete();
+        } else {
+            downstreamAdapter.stop(stopDownstream);
+        }
+
+        if (upstreamAdapter == null) {
+            stopUpstream.complete();
+        } else {
+            upstreamAdapter.stop(stopUpstream);
+        }
+
+        CompositeFuture.all(stopDownstream, stopUpstream).compose(cf -> stopFuture.complete(), stopFuture);
+    }
     /**
      * Sets the downstream adapter to forward messages to.
      * <p>
@@ -72,11 +96,23 @@ public abstract class MessageForwardingEndpoint extends BaseEndpoint {
         this.downstreamAdapter = Objects.requireNonNull(adapter);
     }
 
+    /**
+     * Sets the upstream adapter that forwards messages to the client.
+     * <p>
+     * Subclasses must invoke this method to set the specific
+     * downstream adapter they want to forward messages to.
+     *
+     * @param adapter The adapter.
+     */
+    protected final void setUpstreamAdapter(final UpstreamAdapter adapter) {
+        this.upstreamAdapter = Objects.requireNonNull(adapter);
+    }
+
     @Override
     public final void onLinkAttach(final ProtonReceiver receiver, final ResourceIdentifier targetAddress) {
 
         final String linkId = UUID.randomUUID().toString();
-        final UpstreamReceiver link = UpstreamReceiver.newUpstreamReceiver(linkId, receiver, getEndpointQos());
+        final UpstreamReceiver link = ForwardingLinkImpl.newUpstreamReceiver(linkId, receiver, getEndpointQos());
 
         downstreamAdapter.onClientAttach(link, s -> {
             if (s.succeeded()) {
@@ -92,12 +128,33 @@ public abstract class MessageForwardingEndpoint extends BaseEndpoint {
                         onLinkDetach(link, condition(AmqpError.DECODE_ERROR.toString(), "invalid message received"));
                     }
                 }).open();
-                logger.debug("accepted link from telemetry client [{}]", linkId);
+                logger.debug("accepted link from client [{}]", linkId);
             } else {
                 // we cannot connect to downstream container, reject client
                 link.close(condition(AmqpError.PRECONDITION_FAILED, "no consumer available for target"));
             }
         });
+    }
+
+    @Override
+    public void onLinkAttach(final ProtonSender sender, final ResourceIdentifier targetResource) {
+        final String linkId = UUID.randomUUID().toString();
+        final UpstreamSender link = ForwardingLinkImpl.newUpstreamSender(linkId, sender, getEndpointQos());
+
+        upstreamAdapter.onClientAttach(link, s -> {
+            if (s.succeeded()) {
+                sender.closeHandler(clientDetached -> {
+                    // client has closed link -> inform Adapter about client detach
+                    onLinkDetach(link);
+                    upstreamAdapter.onClientDetach(link);
+                }).open();
+                logger.debug("accepted link from client [{}]", linkId);
+            } else {
+                // we cannot connect to downstream container, reject client
+                link.close(condition(AmqpError.PRECONDITION_FAILED, "no consumer available for target"));
+            }
+        });
+
     }
 
     private void forwardMessage(final UpstreamReceiver link, final ProtonDelivery delivery, final Message msg) {

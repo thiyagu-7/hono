@@ -23,96 +23,98 @@ import io.vertx.proton.ProtonReceiver;
  * A decorator for a {@code ProtonReceiver} representing a client uploading data to a Hono endpoint.
  *
  */
-public interface UpstreamReceiver {
-
-    /**
-     * Creates a new instance for an identifier and a receiver link.
-     * <p>
-     * The receiver is configured for manual flow control and disposition handling.
-     * 
-     * @param linkId The identifier for the link.
-     * @param receiver The link for receiving data from the client.
-     * @param qos The quality of service the receiver should use.
-     * @return The created instance.
-     * @throws NullPointerException if any of the parameters is {@code null}.
-     */
-    static UpstreamReceiver newUpstreamReceiver(final String linkId, final ProtonReceiver receiver, final ProtonQoS qos) {
-        return new UpstreamReceiverImpl(linkId, receiver, qos);
-    }
-
-    /**
-     * Creates a new instance for an identifier and a receiver link.
-     * <p>
-     * The receiver is configured for manual flow control and disposition handling
-     * and uses <em>AT_MOST_ONCE</em> quality of service.
-     * 
-     * @param linkId The identifier for the link.
-     * @param receiver The link for receiving data from the client.
-     * @return The created instance.
-     * @throws NullPointerException if any of the parameters is {@code null}.
-     */
-    static UpstreamReceiver atMostOnceReceiver(final String linkId, final ProtonReceiver receiver) {
-        return new UpstreamReceiverImpl(linkId, receiver, ProtonQoS.AT_MOST_ONCE);
-    }
-
-    /**
-     * Creates a new instance for an identifier and a receiver link.
-     * <p>
-     * The receiver is configured for manual flow control and disposition handling.
-     * and uses <em>AT_LEAST_ONCE</em> quality of service.
-     * 
-     * @param linkId The identifier for the link.
-     * @param receiver The link for receiving data from the client.
-     * @return The created instance.
-     * @throws NullPointerException if any of the parameters is {@code null}.
-     */
-    static UpstreamReceiver atLeastOnceReceiver(final String linkId, final ProtonReceiver receiver) {
-        return new UpstreamReceiverImpl(linkId, receiver, ProtonQoS.AT_LEAST_ONCE);
-    }
-
+public interface UpstreamReceiver extends ForwardingLink {
+//
+//    /**
+//     * Creates a new instance for an identifier and a receiver link.
+//     * <p>
+//     * The receiver is configured for manual flow control and disposition handling.
+//     *
+//     * @param linkId The identifier for the link.
+//     * @param receiver The link for receiving data from the client.
+//     * @param qos The quality of service the receiver should use.
+//     * @return The created instance.
+//     * @throws NullPointerException if any of the parameters is {@code null}.
+//     */
+//    static UpstreamReceiver newUpstreamReceiver(final String linkId, final ProtonReceiver receiver, final ProtonQoS qos) {
+//        return new UpstreamReceiverImpl(linkId, receiver, qos);
+//    }
+//
+//    /**
+//     * Creates a new instance for an identifier and a receiver link.
+//     * <p>
+//     * The receiver is configured for manual flow control and disposition handling
+//     * and uses <em>AT_MOST_ONCE</em> quality of service.
+//     *
+//     * @param linkId The identifier for the link.
+//     * @param receiver The link for receiving data from the client.
+//     * @return The created instance.
+//     * @throws NullPointerException if any of the parameters is {@code null}.
+//     */
+//    static UpstreamReceiver atMostOnceReceiver(final String linkId, final ProtonReceiver receiver) {
+//        return new UpstreamReceiverImpl(linkId, receiver, ProtonQoS.AT_MOST_ONCE);
+//    }
+//
+//    /**
+//     * Creates a new instance for an identifier and a receiver link.
+//     * <p>
+//     * The receiver is configured for manual flow control and disposition handling.
+//     * and uses <em>AT_LEAST_ONCE</em> quality of service.
+//     *
+//     * @param linkId The identifier for the link.
+//     * @param receiver The link for receiving data from the client.
+//     * @return The created instance.
+//     * @throws NullPointerException if any of the parameters is {@code null}.
+//     */
+//    static UpstreamReceiver atLeastOnceReceiver(final String linkId, final ProtonReceiver receiver) {
+//        return new UpstreamReceiverImpl(linkId, receiver, ProtonQoS.AT_LEAST_ONCE);
+//    }
+//
     /**
      * Sends an AMQP 1.0 <em>flow</em> frame to the client with a certain amount of <em>credit</em>.
-     * 
+     *
      * @param replenishedCredits The number of credits to replenish the client with.
      */
     void replenish(int replenishedCredits);
+//
+//    /**
+//     * Sends an AMQP 1.0 <em>flow</em> frame to the client with the <em>drain</em> flag set.
+//     *
+//     * @param timeoutMillis The maximum time to wait for a response from the client in milliseconds.
+//     * @param drainCompletionHandler The handler to notify about the result of the drain request.
+//     */
+//    void drain(long timeoutMillis, Handler<AsyncResult<Void>> drainCompletionHandler);
+//
+//    /**
+//     * Closes the decorated link with an error condition.
+//     *
+//     * @param error The error condition to set on the link.
+//     */
+//    void close(ErrorCondition error);
+//
+//    /**
+//     * Gets the link's unique identifier.
+//     *
+//     * @return The identifier.
+//     */
+//    String getLinkId();
+//
+//    /**
+//     * Gets the ID of the client's connection to Hono that the decorated link is part of.
+//     * <p>
+//     * {@code HonoServer} assigns this (surrogate) identifier when a client establishes a connection with Hono.
+//     *
+//     * @return The ID.
+//     */
+//    String getConnectionId();
+//
+//    /**
+//     * Gets the decorated link's target address.
+//     *
+//     * @return The address.
+//     */
+//    String getTargetAddress();
 
-    /**
-     * Sends an AMQP 1.0 <em>flow</em> frame to the client with the <em>drain</em> flag set.
-     * 
-     * @param timeoutMillis The maximum time to wait for a response from the client in milliseconds.
-     * @param drainCompletionHandler The handler to notify about the result of the drain request.
-     */
-    void drain(long timeoutMillis, Handler<AsyncResult<Void>> drainCompletionHandler);
-
-    /**
-     * Closes the decorated link with an error condition.
-     * 
-     * @param error The error condition to set on the link.
-     */
-    void close(ErrorCondition error);
-
-    /**
-     * Gets the link's unique identifier.
-     * 
-     * @return The identifier.
-     */
-    String getLinkId();
-
-    /**
-     * Gets the ID of the client's connection to Hono that the decorated link is part of.
-     * <p>
-     * {@code HonoServer} assigns this (surrogate) identifier when a client establishes a connection with Hono.
-     * 
-     * @return The ID.
-     */
-    String getConnectionId();
-
-    /**
-     * Gets the decorated link's target address.
-     * 
-     * @return The address.
-     */
-    String getTargetAddress();
+    ProtonReceiver getReceiver();
 
 }

@@ -12,6 +12,8 @@
 package org.eclipse.hono;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -22,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.qpid.proton.amqp.Binary;
 import org.apache.qpid.proton.amqp.messaging.ApplicationProperties;
 import org.apache.qpid.proton.amqp.messaging.Data;
+import org.apache.qpid.proton.amqp.transport.Target;
 import org.apache.qpid.proton.engine.Record;
 import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.server.SenderFactory;
@@ -41,6 +44,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.proton.ProtonClient;
 import io.vertx.proton.ProtonConnection;
 import io.vertx.proton.ProtonHelper;
+import io.vertx.proton.ProtonReceiver;
 import io.vertx.proton.ProtonSender;
 
 /**
@@ -145,6 +149,26 @@ public final class TestSupport {
         UpstreamReceiver client = mock(UpstreamReceiver.class);
         when(client.getLinkId()).thenReturn(CLIENT_ID);
         return client;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static ProtonReceiver newMockReceiver(final boolean drainFlag) {
+        @SuppressWarnings("rawtypes") final
+        Record attachments = mock(Record.class);
+        final Target targetMock = mock(Target.class);
+        when(targetMock.getAddress()).thenReturn("target");
+        final ProtonReceiver receiver = mock(ProtonReceiver.class);
+        when(receiver.attachments()).thenReturn(attachments);
+        when(receiver.isOpen()).thenReturn(Boolean.TRUE);
+        when(receiver.getCredit()).thenReturn(DEFAULT_CREDITS);
+        when(receiver.getQueued()).thenReturn(0);
+        when(receiver.getDrain()).thenReturn(drainFlag);
+        when(receiver.getRemoteTarget()).thenReturn(targetMock);
+        when(receiver.setAutoAccept(anyBoolean())).thenReturn(receiver);
+        when(receiver.setQoS(any())).thenReturn(receiver);
+        when(receiver.setPrefetch(anyInt())).thenReturn(receiver);
+        when(receiver.open()).then(invocation -> receiver );
+        return receiver;
     }
 
     @SuppressWarnings("unchecked")

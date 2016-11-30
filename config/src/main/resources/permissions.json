@@ -5,6 +5,9 @@
   "event/DEFAULT_TENANT": {
       "hono-client": [ "WRITE" ]
   },
+  "command/DEFAULT_TENANT": {
+      "hono-client": [ "READ", "WRITE" ]
+  },
   "registration/DEFAULT_TENANT": {
       "hono-client": [ "READ", "WRITE" ]
   }

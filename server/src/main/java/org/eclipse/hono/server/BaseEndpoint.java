@@ -40,11 +40,11 @@ import io.vertx.proton.ProtonSender;
  */
 public abstract class BaseEndpoint implements Endpoint {
 
-    protected Vertx                             vertx;
-    protected final Logger                      logger               = LoggerFactory.getLogger(getClass());
-    protected HonoConfigProperties              honoConfig           = new HonoConfigProperties();
-    private static final String                 STATUS_OK            = String.valueOf(HTTP_OK);
-    private Map<String, UpstreamReceiverImpl>   activeClients        = new HashMap<>();
+    protected Vertx vertx;
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected HonoConfigProperties honoConfig = new HonoConfigProperties();
+    private static final String STATUS_OK = String.valueOf(HTTP_OK);
+    private Map<String, ForwardingLink> activeClients = new HashMap<>();
 
     /**
      * 
@@ -104,11 +104,11 @@ public abstract class BaseEndpoint implements Endpoint {
         stopFuture.complete();
     }
 
-    protected final void onLinkDetach(final UpstreamReceiver client) {
+    protected final void onLinkDetach(final ForwardingLink client) {
         onLinkDetach(client, null);
     }
 
-    protected final void onLinkDetach(final UpstreamReceiver client, final ErrorCondition error) {
+    protected final void onLinkDetach(final ForwardingLink client, final ErrorCondition error) {
         if (error == null) {
             logger.debug("closing receiver for client [{}]", client.getLinkId());
         } else {
@@ -123,7 +123,7 @@ public abstract class BaseEndpoint implements Endpoint {
      * 
      * @param link The link to register.
      */
-    protected final void registerClientLink(final UpstreamReceiverImpl link) {
+    protected final void registerClientLink(final ForwardingLink link) {
         activeClients.put(link.getLinkId(), link);
     }
 
@@ -134,7 +134,7 @@ public abstract class BaseEndpoint implements Endpoint {
      * @return The link object representing the client or {@code null} if no link with the given identifier exists.
      * @throws NullPointerException if the link id is {@code null}.
      */
-    protected final UpstreamReceiver getClientLink(final String linkId) {
+    protected final ForwardingLink getClientLink(final String linkId) {
         return activeClients.get(Objects.requireNonNull(linkId));
     }
 

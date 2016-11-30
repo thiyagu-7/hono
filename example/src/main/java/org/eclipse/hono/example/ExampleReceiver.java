@@ -99,6 +99,10 @@ public class ExampleReceiver {
                     client.createEventConsumer(tenantId,
                             (msg) -> handleMessage("event", msg),
                             eventConsumer.completer());
+                } else if (activeProfiles.contains("command")) {
+                    client.createCommandConsumer(tenantId,
+                            (msg) -> handleMessage("command", msg),
+                            eventConsumer.completer());
                 } else {
                     eventConsumer.complete();
 
