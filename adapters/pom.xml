@@ -28,7 +28,7 @@
 
   <modules>
     <module>rest-vertx</module>
-    <module>mqtt-vertx</module>
+    <!--<module>mqtt-vertx</module>-->
   </modules>
 
   <name>Hono Protocol Adapters</name>
