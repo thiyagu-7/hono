@@ -191,9 +191,10 @@ public class HonoClient {
         return this;
     }
 
-    public HonoClient getOrCreateCommandSender( final String tenantId, final Handler<AsyncResult<MessageSender>> resultHandler) {
+    public HonoClient getOrCreateCommandSender( final String tenantId,
+            final Consumer<Message> replyConsumer, final Handler<AsyncResult<MessageSender>> resultHandler) {
         Objects.requireNonNull(tenantId);
-        getOrCreateSender("command/" + tenantId, (creationResult) -> createCommandSender(tenantId, creationResult), resultHandler);
+        getOrCreateSender("command/" + tenantId, (creationResult) -> createCommandSender(tenantId, replyConsumer, creationResult), resultHandler);
         return this;
     }
 
@@ -270,10 +271,11 @@ public class HonoClient {
 
     private HonoClient createCommandSender(
             final String tenantId,
+            final Consumer<Message> replyConsumer,
             final Handler<AsyncResult<MessageSender>> creationHandler) {
 
         checkConnection().compose(
-                connected -> CommandSenderImpl.create(context, connection, tenantId, pathSeparator, creationHandler),
+                connected -> CommandSenderImpl.create(context, connection, tenantId, pathSeparator, replyConsumer, creationHandler),
                 Future.<MessageSender> future().setHandler(creationHandler));
         return this;
     }

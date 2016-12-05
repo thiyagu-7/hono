@@ -14,14 +14,18 @@
 package org.eclipse.hono.command;
 
 /**
- * Constants & utility methods used throughout the Event API.
+ * Constants & utility methods used throughout the Command&amp;Control API.
  */
 public final class CommandConstants {
 
     /**
-     * The name of the event endpoint.
+     * The name of the command endpoint.
      */
     public static final String COMMAND_ENDPOINT = "command";
+    /**
+     * The name of the command reply endpoint.
+     */
+    public static final String COMMAND_REPLY_ENDPOINT = "command-reply";
 
     private CommandConstants() {
     }

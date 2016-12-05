@@ -23,11 +23,13 @@ import java.util.Map;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.client.HonoClient;
 import org.eclipse.hono.client.HonoClient.HonoClientBuilder;
 import org.eclipse.hono.config.HonoClientConfigProperties;
 import org.eclipse.hono.client.MessageSender;
 import org.eclipse.hono.client.RegistrationClient;
+import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.RegistrationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,13 +120,19 @@ public class ExampleSender {
                 if (activeProfiles.contains("event")) {
                     client.getOrCreateEventSender(tenantId, startupTracker.completer());
                 } else if (activeProfiles.contains("command")) {
-                    client.getOrCreateCommandSender(tenantId, startupTracker.completer());
+                    client.getOrCreateCommandSender(tenantId, this::handleCommandReply, startupTracker.completer());
                 } else {
                     // default to telemetry sender
                     client.getOrCreateTelemetrySender(tenantId, startupTracker.completer());
                 }
             }, startupTracker);
         });
+    }
+
+    private void handleCommandReply(final Message reply) {
+        final String correlationId = reply.getCorrelationId().toString();
+        final int status = MessageHelper.getApplicationProperty(reply.getApplicationProperties(), "status", Integer.class);
+        LOG.info("Received command reply for message {} with status {} and payload: {}", correlationId, status, reply.getBody());
     }
 
     private void readMessagesFromStdin(final MessageSender messageSender, final Future<Object> f) {

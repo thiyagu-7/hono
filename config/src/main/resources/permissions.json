@@ -8,6 +8,9 @@
   "command/DEFAULT_TENANT": {
       "hono-client": [ "READ", "WRITE" ]
   },
+  "command-reply/DEFAULT_TENANT": {
+      "hono-client": [ "READ", "WRITE" ]
+  },
   "registration/DEFAULT_TENANT": {
       "hono-client": [ "READ", "WRITE" ]
   }

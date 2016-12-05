@@ -13,32 +13,37 @@
 
 package org.eclipse.hono.client.impl;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.client.MessageConsumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.eclipse.hono.util.MessageHelper;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.proton.ProtonConnection;
+import io.vertx.proton.ProtonQoS;
 import io.vertx.proton.ProtonReceiver;
+import io.vertx.proton.ProtonSender;
 
 /**
  * A Vertx-Proton based client for consuming event messages from a Hono server.
  */
-public class CommandConsumerImpl extends AbstractHonoClient implements MessageConsumer {
+public class CommandConsumerImpl extends AbstractSender implements MessageConsumer {
 
     private static final String COMMAND_ADDRESS_TEMPLATE = "command%s%s";
-    private static final Logger LOG = LoggerFactory.getLogger(CommandConsumerImpl.class);
+    private static final String COMMAND_REPLY_ADDRESS_TEMPLATE = "command-reply%s%s";
 
-    private CommandConsumerImpl(final Context context, final ProtonReceiver receiver) {
+    private CommandConsumerImpl(final Context context, final ProtonReceiver receiver, final ProtonSender sender) {
         super(context);
         this.receiver = receiver;
+        this.sender = sender;
     }
 
     public static void create(
@@ -52,45 +57,34 @@ public class CommandConsumerImpl extends AbstractHonoClient implements MessageCo
         Objects.requireNonNull(con);
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(pathSeparator);
-        createConsumer(context, con, tenantId, pathSeparator, eventConsumer).setHandler(created -> {
+
+        final Future<ProtonReceiver> consumerResult = Future.future();
+        final Future<ProtonSender> senderResult = Future.future();
+
+        createConsumer(context, con, COMMAND_ADDRESS_TEMPLATE, tenantId, pathSeparator, eventConsumer).setHandler(consumerResult.completer());
+        createSender(context, con, COMMAND_REPLY_ADDRESS_TEMPLATE, tenantId, pathSeparator, ProtonQoS.AT_LEAST_ONCE).setHandler(senderResult.completer());
+
+        CompositeFuture.all(consumerResult, senderResult).setHandler(created -> {
             if (created.succeeded()) {
+
+                final ProtonReceiver receiver = (ProtonReceiver) created.result().list().get(0);
+                final ProtonSender sender = (ProtonSender) created.result().list().get(1);
                 creationHandler.handle(Future.succeededFuture(
-                        new CommandConsumerImpl(context, created.result())));
+                        new CommandConsumerImpl(context, receiver, sender)));
             } else {
                 creationHandler.handle(Future.failedFuture(created.cause()));
             }
         });
     }
 
-    private static Future<ProtonReceiver> createConsumer(
-            final Context context,
-            final ProtonConnection con,
-            final String tenantId,
-            final String pathSeparator,
-            final Consumer<Message> consumer) {
-
-        Future<ProtonReceiver> result = Future.future();
-        final String targetAddress = String.format(COMMAND_ADDRESS_TEMPLATE, pathSeparator, tenantId);
-
-        context.runOnContext(open -> {
-            final ProtonReceiver receiver = con.createReceiver(targetAddress);
-            receiver.setAutoAccept(true).setPrefetch(DEFAULT_RECEIVER_CREDITS);
-            receiver.openHandler(receiverOpen -> {
-                if (receiverOpen.succeeded()) {
-                    LOG.debug("command receiver for [{}] open", receiverOpen.result().getRemoteSource());
-                    result.complete(receiverOpen.result());
-                } else {
-                    result.fail(receiverOpen.cause());
-                }
-            });
-            receiver.handler((delivery, message) -> {
-                if (consumer != null) {
-                    consumer.accept(message);
-                }
-            });
-            receiver.open();
-        });
-        return result;
+    @Override
+    public boolean reply(final Message command, final int status, final String response) {
+        final Map<String, Object> properties = new HashMap<>();
+        properties.put("status", status);
+        final String deviceId = MessageHelper.getDeviceId(command);
+        final Message reply = buildMessage(deviceId, properties, response, "text/plain");
+        reply.setCorrelationId(command.getMessageId());
+        return send(reply);
     }
 
     @Override

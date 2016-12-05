@@ -12,6 +12,8 @@
 
 package org.eclipse.hono.client;
 
+import org.apache.qpid.proton.message.Message;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 
@@ -30,4 +32,8 @@ public interface MessageConsumer {
      * @param closeHandler A handler that is called back with the result of the attempt to close the links.
      */
     void close(Handler<AsyncResult<Void>> closeHandler);
+
+    default boolean reply(final Message command, final int status, final String response) {
+        return false;
+    }
 }

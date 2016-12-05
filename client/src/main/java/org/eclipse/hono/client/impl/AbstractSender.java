@@ -45,7 +45,6 @@ import io.vertx.proton.ProtonHelper;
  */
 abstract class AbstractSender extends AbstractHonoClient implements MessageSender {
 
-    private static final Logger     LOG = LoggerFactory.getLogger(AbstractSender.class);
     private static final AtomicLong messageCounter = new AtomicLong();
     private static final Pattern    CHARSET_PATTERN = Pattern.compile("^.*;charset=(.*)$");
 
@@ -177,25 +176,32 @@ abstract class AbstractSender extends AbstractHonoClient implements MessageSende
 
     @Override
     public boolean send(final String deviceId, final Map<String, ?> properties, final byte[] payload, final String contentType) {
-        Objects.requireNonNull(deviceId);
-        Objects.requireNonNull(payload);
-        Objects.requireNonNull(contentType);
-        final Message msg = ProtonHelper.message();
-        msg.setBody(new Data(new Binary(payload)));
-        setApplicationProperties(msg, properties);
-        addProperties(msg, deviceId, contentType);
-        return send(msg);
+        final Message message = buildMessage(deviceId, properties, payload, contentType);
+        return send(message);
     }
 
     @Override
     public void send(final String deviceId, final Map<String, ?> properties, final String payload, final String contentType, final Handler<Void> capacityAvailableHandler) {
-        Objects.requireNonNull(payload);
-        final Charset charset = getCharsetForContentType(Objects.requireNonNull(contentType));
-        send(deviceId, properties, payload.getBytes(charset), contentType, capacityAvailableHandler);
+        final Message message = buildMessage(deviceId, properties, payload, contentType);
+        send(message, capacityAvailableHandler);
     }
 
     @Override
     public void send(final String deviceId, final Map<String, ?> properties, final byte[] payload, final String contentType, final Handler<Void> capacityAvailableHandler) {
+        final Message message = buildMessage(deviceId, properties, payload, contentType);
+        send(message, capacityAvailableHandler);
+    }
+
+    public Message buildMessage(final String deviceId, final Map<String, ?> properties, final String payload, final String contentType) {
+        Objects.requireNonNull(deviceId);
+        Objects.requireNonNull(payload);
+        Objects.requireNonNull(contentType);
+        final Charset charset = getCharsetForContentType(Objects.requireNonNull(contentType));
+        final byte[] payloadBytes = payload.getBytes(charset);
+        return buildMessage(deviceId, properties, payloadBytes, contentType);
+    }
+
+    public Message buildMessage(final String deviceId, final Map<String, ?> properties, final byte[] payload, final String contentType) {
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(payload);
         Objects.requireNonNull(contentType);
@@ -203,7 +209,7 @@ abstract class AbstractSender extends AbstractHonoClient implements MessageSende
         msg.setBody(new Data(new Binary(payload)));
         setApplicationProperties(msg, properties);
         addProperties(msg, deviceId, contentType);
-        send(msg, capacityAvailableHandler);
+        return msg;
     }
 
     protected void addProperties(final Message msg, final String deviceId, final String contentType) {
