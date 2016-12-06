@@ -66,7 +66,7 @@ public abstract class ForwardingUpstreamAdapter extends BaseForwardingAdapter<Pr
             client.getSourceAddress(),
             creationAttempt -> {
                 if (creationAttempt.succeeded()) {
-                    logger.info("created downstream receiver [con: {}, link: {}]", client.getConnectionId(), client.getLinkId());
+                    logger.info("created downstream receiver [con: {}, link: {}, source: {}]", client.getConnectionId(), client.getLinkId(), client.getSourceAddress());
                     final ProtonReceiver receiver = creationAttempt.result();
                     receiver.handler((delivery, message) -> processMessage(client, delivery, message));
                     client.handleFlow(receiver);

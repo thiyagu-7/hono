@@ -43,9 +43,9 @@
   ["policyRuleset",
     {
       "applicationName": "hono-internal",
-      "maxConnections": 10,
-      "maxConnPerUser": 10,
-      "maxConnPerHost": 10,
+      "maxConnections": 100,
+      "maxConnPerUser": 50,
+      "maxConnPerHost": 50,
       "userGroups": {
         "anonymous" : "anonymous"
       },

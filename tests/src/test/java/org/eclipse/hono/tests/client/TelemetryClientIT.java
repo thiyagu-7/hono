@@ -22,6 +22,7 @@ import org.junit.runner.RunWith;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 /**
@@ -32,12 +33,12 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class TelemetryClientIT extends ClientTestBase {
 
     @Override
-    void createConsumer(final String tenantId, final Consumer<Message> messageConsumer, final Handler<AsyncResult<MessageConsumer>> setupTracker) {
+    void createConsumer(final TestContext ctx, final String tenantId, final Consumer<Message> messageConsumer, final Handler<AsyncResult<MessageConsumer>> setupTracker) {
         downstreamClient.createTelemetryConsumer(tenantId, messageConsumer, setupTracker);
     }
 
     @Override
-    void createProducer(final String tenantId, final Handler<AsyncResult<MessageSender>> setupTracker) {
+    void createProducer(final TestContext ctx, final String tenantId, final Handler<AsyncResult<MessageSender>> setupTracker) {
         honoClient.getOrCreateTelemetrySender(tenantId, setupTracker);
     }
 

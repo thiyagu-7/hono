@@ -145,8 +145,9 @@ public abstract class BaseAdapter {
             } else {
                 logger.info("connected to downstream AMQP 1.0 container [{}:{}], opening connection ...",
                         downstreamContainerHost, downstreamContainerPort);
+                final String containerName = "Hono-Adapter-" + UUID.randomUUID();
                 conAttempt.result()
-                        .setContainer("Hono-Adapter" + UUID.randomUUID())
+                        .setContainer(containerName)
                         .setHostname("hono-internal")
                         .openHandler(openCon -> {
                             if (openCon.succeeded()) {
@@ -160,8 +161,7 @@ public abstract class BaseAdapter {
                                 });
                                 connectFuture.complete();
                             } else {
-                                logger.warn("can't open connection to downstream container [{}]",
-                                        downstreamConnection.getRemoteContainer(), openCon.cause());
+                                logger.warn("can't open connection to downstream container [{}]", containerName, openCon.cause());
                                 connectFuture.fail(openCon.cause());
                             }
                         })

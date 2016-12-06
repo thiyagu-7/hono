@@ -171,7 +171,7 @@ public class ForwardingLinkImpl implements ForwardingLink, UpstreamReceiver, Ups
 
     private void handleFlow(final ProtonReceiver receiver, final ProtonSender sender) {
         final int credits = getAvailableCredit(sender);
-        LOG.trace("received FLOW from sender for upstream client [con:{}, link: {}, credits: {}, drain: {}",
+        LOG.trace("received FLOW from sender for upstream client [con:{}, link: {}, credits: {}, drain: {}]",
         sender.getSession(), MessageHelper.getLinkName(sender), credits, sender.getDrain());
         if (sender.getDrain()) {
             // send drain request upstream and act upon result of request to drain upstream client
@@ -181,7 +181,7 @@ public class ForwardingLinkImpl implements ForwardingLink, UpstreamReceiver, Ups
                 }
             });
         } else {
-            LOG.debug("replenishing client [{}] with {} credits", receiver, credits);
+            LOG.debug("replenishing client [{}] with {} credits", receiver.getRemoteSource(), credits);
             receiver.flow(credits);
         }
     }
@@ -194,7 +194,8 @@ public class ForwardingLinkImpl implements ForwardingLink, UpstreamReceiver, Ups
     @Override
     public void handleFlow(final ProtonReceiver receiver){
         if (link instanceof ProtonSender) {
-            handleFlow(receiver, (ProtonSender) link);
+            final ProtonSender sender = (ProtonSender) this.link;
+            sender.sendQueueDrainHandler(replenishedSender -> handleFlow(receiver, replenishedSender));
         } else {
             throw new UnsupportedOperationException("Cannot connect two receivers.");
         }
@@ -203,7 +204,7 @@ public class ForwardingLinkImpl implements ForwardingLink, UpstreamReceiver, Ups
     @Override
     public void handleFlow(final ProtonSender sender){
         if (link instanceof ProtonReceiver) {
-            handleFlow((ProtonReceiver) link, sender);
+            sender.sendQueueDrainHandler(replenishedSender -> handleFlow((ProtonReceiver) link, replenishedSender));
         } else {
             throw new UnsupportedOperationException("Cannot connect two senders.");
         }
@@ -230,5 +231,22 @@ public class ForwardingLinkImpl implements ForwardingLink, UpstreamReceiver, Ups
     @Override
     public void replenish(final int replenishedCredits) {
         getReceiver().flow(replenishedCredits);
+    }
+
+    @Override
+    public String toString() {
+        boolean isSender = link instanceof ProtonSender;
+        final StringBuffer sb = new StringBuffer("ForwardingLink{");
+        sb.append("id='").append(id).append('\'');
+        sb.append(", connection='").append(getConnectionId()).append('\'');
+        sb.append(", ")
+                .append(isSender ? "sender" : "receiver")
+                .append("='")
+                .append(MessageHelper.getLinkName(link)).append('\'');
+        sb.append(", credit='").append(link.getCredit()).append('\'');
+        sb.append(", queued='").append(link.getQueued()).append('\'');
+        sb.append(isSender ? "target='" : "source='").append(isSender ? link.getRemoteTarget() : link.getRemoteSource()).append('\'');
+        sb.append('}');
+        return sb.toString();
     }
 }

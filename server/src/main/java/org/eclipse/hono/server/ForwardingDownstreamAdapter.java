@@ -15,6 +15,7 @@ import java.util.Objects;
 
 import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.util.Constants;
+import org.eclipse.hono.util.MessageHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -67,7 +68,7 @@ public abstract class ForwardingDownstreamAdapter extends BaseForwardingAdapter<
                     replenishedSender -> {/* handleFlow(replenishedSender, client) */},
                     creationAttempt -> {
                         if (creationAttempt.succeeded()) {
-                            logger.info("created downstream sender [con: {}, link: {}]", client.getConnectionId(), client.getLinkId());
+                            logger.info("created downstream sender [con: {}, link: {}, target: {}]", client.getConnectionId(), client.getLinkId(), client.getTargetAddress());
                             final ProtonSender sender = creationAttempt.result();
                             client.handleFlow(sender);
                             addLink(client.getConnectionId(), client.getLinkId(), sender);

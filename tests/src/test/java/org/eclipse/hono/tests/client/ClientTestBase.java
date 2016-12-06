@@ -21,8 +21,7 @@ import static org.eclipse.hono.tests.IntegrationTestSupport.PROPERTY_HONO_HOST;
 import static org.eclipse.hono.tests.IntegrationTestSupport.PROPERTY_HONO_PORT;
 
 import java.net.InetAddress;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -35,8 +34,8 @@ import org.eclipse.hono.client.RegistrationClient;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.RegistrationResult;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,8 @@ import io.vertx.proton.ProtonClientOptions;
 
 abstract class ClientTestBase {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+    static final String CHECK_ARTEMIS_HEADER_PROPERTY = "CHECK_ARTEMIS_HEADER";
+    final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
     // connection parameters
     private static final String DEFAULT_HOST = InetAddress.getLoopbackAddress().getHostAddress();
@@ -62,7 +62,7 @@ abstract class ClientTestBase {
     private static final int DOWNSTREAM_PORT = Integer.getInteger(PROPERTY_DOWNSTREAM_PORT, 15672);
     private static final String PATH_SEPARATOR = System.getProperty("hono.pathSeparator", "/");
     // test constants
-    private static final int MSG_COUNT = 50;
+    protected static final int MSG_COUNT = 50;
     private static final String TEST_TENANT_ID = "DEFAULT_TENANT";
     private static final String DEVICE_ID = "device-0";
     private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
@@ -74,6 +74,8 @@ abstract class ClientTestBase {
     RegistrationClient registrationClient;
     MessageSender sender;
     MessageConsumer consumer;
+
+    AtomicReference<Consumer<Message>> replyConsumer = new AtomicReference<>(message -> LOGGER.error("No handler set."));
 
     @Before
     public void connect(final TestContext ctx) throws Exception {
@@ -120,15 +122,15 @@ abstract class ClientTestBase {
             return regTracker;
         }).compose(regClient -> {
             // step 3
-            // create client for sending telemetry data to Hono server
+            // create client for sending messages to Hono server
             registrationClient = regClient;
-            createProducer(TEST_TENANT_ID, setupTracker.completer());
+            createProducer(ctx, TEST_TENANT_ID, setupTracker.completer());
         }, setupTracker);
 
         done.await(5000);
     }
 
-    abstract void createProducer(final String tenantId, final Handler<AsyncResult<MessageSender>> setupTracker);
+    abstract void createProducer(final TestContext ctx, final String tenantId, final Handler<AsyncResult<MessageSender>> setupTracker);
 
     @After
     public void deregister(final TestContext ctx) throws InterruptedException {
@@ -188,6 +190,8 @@ abstract class ClientTestBase {
     @Test(timeout = 5000)
     public void testSendingMessages(final TestContext ctx) throws Exception {
 
+        prepareSending(ctx);
+
         final Async received = ctx.async(MSG_COUNT);
         final Async accepted = ctx.async(MSG_COUNT);
         final Async setup = ctx.async();
@@ -200,14 +204,13 @@ abstract class ClientTestBase {
 
         sender.setDispositionHandler((id, disposition) -> accepted.countDown());
 
-
-        Future<RegistrationResult> regTracker = Future.future();
+        final Future<RegistrationResult> regTracker = Future.future();
         registrationClient.register(DEVICE_ID, null, regTracker.completer());
         regTracker.compose(r -> {
             if (r.getStatus() == HTTP_CREATED || r.getStatus() == HTTP_CONFLICT) {
                 // test can also commence if device already exists
                 LOGGER.debug("registration succeeded");
-                createConsumer(TEST_TENANT_ID, msg -> {
+                createConsumer(ctx, TEST_TENANT_ID, msg -> {
                     LOGGER.trace("received {}", msg);
                     assertMessagePropertiesArePresent(ctx, msg);
                     received.countDown();
@@ -233,21 +236,27 @@ abstract class ClientTestBase {
         accepted.await(5000);
     }
 
-    abstract void createConsumer(final String tenantId, final Consumer<Message> messageConsumer, final Handler<AsyncResult<MessageConsumer>> setupTracker);
+    protected void prepareSending(final TestContext ctx) {
+        // overwrite in subclass...
+    }
 
-    @Test(timeout = 5000l)
+    abstract void createConsumer(final TestContext ctx, final String tenantId, final Consumer<Message> messageConsumer, final Handler<AsyncResult<MessageConsumer>> setupTracker);
+
+    @Test(timeout = 5000L)
+    @Ignore
     public void testCreateSenderFailsForTenantWithoutAuthorization(final TestContext ctx) {
-        createProducer("non-authorized", ctx.asyncAssertFailure(
+        createProducer(ctx, "non-authorized", ctx.asyncAssertFailure(
                 failed -> LOGGER.debug("creation of sender failed: {}", failed.getMessage())
             ));
     }
 
-    @Test(timeout = 5000l)
+    @Test(timeout = 5000L)
+    @Ignore
     public void testCreateReceiverFailsForTenantWithoutAuthorization(final TestContext ctx) {
         // create sender for tenant that has no permission
         //downstreamClient.createTelemetryConsumer("non-authorized", message -> {}, ctx.asyncAssertFailure());
 
-        createConsumer("non-authorized", message -> {}, ctx.asyncAssertFailure(
+        createConsumer(ctx, "non-authorized", message -> {}, ctx.asyncAssertFailure(
                 failed -> LOGGER.debug("creation of receiver failed: {}", failed.getMessage())
         ));
     }

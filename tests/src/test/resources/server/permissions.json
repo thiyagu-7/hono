@@ -5,6 +5,12 @@
   "event/DEFAULT_TENANT": {
     "hono-client": [ "WRITE" ]
   },
+  "command/DEFAULT_TENANT": {
+    "hono-client": [ "READ", "WRITE" ]
+  },
+  "command-reply/DEFAULT_TENANT": {
+    "hono-client": [ "READ", "WRITE" ]
+  },
   "telemetry/DEFAULT_TENANT/fluxcapacitor": {
     "connector-client": [ "WRITE" ]
   },
