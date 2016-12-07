@@ -187,6 +187,7 @@ public final class TestSupport {
             return sender;
         });
         when(sender.sendQueueDrainHandler(drainHandlerCaptor.capture())).then(invocation -> {
+            drainHandlerCaptor.getValue().handle(sender);
             return sender;
         });
         return sender;
